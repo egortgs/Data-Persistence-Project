@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
+using System.IO;
+using UnityEditor.SearchService;
 
 public class MainManager : MonoBehaviour
 {
@@ -12,16 +15,26 @@ public class MainManager : MonoBehaviour
 
     public Text ScoreText;
     public GameObject GameOverText;
-    
+
+    public string BestPlayerName;
+    public int BestScore;
+    public TextMeshProUGUI BestText;
+
+
     private bool m_Started = false;
     private int m_Points;
     
     private bool m_GameOver = false;
+    public TextMeshProUGUI playerName;
 
-    
     // Start is called before the first frame update
+
+  
     void Start()
     {
+        playerName.text = MenuManager.Instance.PlayerName;
+        Loading();
+        BestText.text = "Best score: " + BestPlayerName + BestScore;
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
         
@@ -40,6 +53,14 @@ public class MainManager : MonoBehaviour
 
     private void Update()
     {
+        BestText.text = "Best score: " + BestPlayerName + " " + BestScore;
+        if (m_Points > BestScore)
+        {
+            BestScore = m_Points;
+            BestPlayerName = MenuManager.Instance.PlayerName;
+            Saving();
+            Loading();
+        }
         if (!m_Started)
         {
             if (Input.GetKeyDown(KeyCode.Space))
@@ -57,6 +78,7 @@ public class MainManager : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Space))
             {
+                Loading();
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
         }
@@ -72,5 +94,44 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+        if (m_Points > BestScore)
+        {
+            BestScore = m_Points;
+            BestPlayerName = MenuManager.Instance.PlayerName;
+            Saving();
+        }    
+    }
+    public void Exit()
+    {
+        SceneManager.LoadScene(0);
+    }
+
+    [System.Serializable]
+    class SaveData
+    {
+        public string PlayerName;
+        public int BestScore;
+    }
+
+    public void Saving()
+    {
+        SaveData data = new SaveData();
+        data.PlayerName = BestPlayerName;
+        data.BestScore = BestScore;
+
+        string json = JsonUtility.ToJson(data);
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+
+    public void Loading()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+            BestPlayerName = data.PlayerName;
+            BestScore = data.BestScore;
+        }
     }
 }
